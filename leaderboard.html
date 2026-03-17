@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labour Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f11;
+  --surface: #17171a;
+  --surface2: #1e1e22;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f0efe8;
+  --muted: #7a7a80;
+  --accent-cnc: #4f9cf9;
+  --accent-flex: #3ecf8e;
+  --accent-qual: #f97316;
+  --gold: #f5c842;
+  --silver: #a8b3c4;
+  --bronze: #c87941;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+/* ── Upload screen ── */
+#upload-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.logo-mark {
+  width: 56px; height: 56px;
+  border: 1.5px solid var(--border2);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.logo-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(79,156,249,0.15), rgba(62,207,142,0.08));
+}
+.logo-mark svg { position: relative; z-index: 1; }
+.upload-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+.upload-sub { font-size: 14px; color: var(--muted); margin-bottom: 3rem; }
+.drop-zone {
+  width: 100%; max-width: 480px;
+  border: 1.5px dashed var(--border2);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: var(--surface);
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent-cnc);
+  background: rgba(79,156,249,0.04);
+}
+.drop-icon {
+  width: 48px; height: 48px;
+  background: var(--surface2);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+}
+.drop-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.drop-sub { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+.drop-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px;
+  background: var(--accent-cnc);
+  color: #0a1628;
+  border: none; border-radius: 8px;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.drop-btn:hover { opacity: 0.88; }
+#file-input { display: none; }
+.drop-note { font-size: 12px; color: var(--muted); margin-top: 1rem; }
+.formula-note {
+  margin-top: 2rem;
+  max-width: 480px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.formula-note strong { color: var(--text); }
+/* ── Main app ── */
+#app { display: none; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 2rem;
+  border-bottom: 0.5px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(15,15,17,0.92);
+  backdrop-filter: blur(12px);
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-logo {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.3px;
+  color: var(--text);
+}
+.topbar-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--muted);
+  background: var(--surface2);
+  padding: 3px 10px; border-radius: 6px;
+}
+.reload-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: var(--surface2);
+  border: 0.5px solid var(--border2);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.reload-btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface); }
+.main-content { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+/* summary strip */
+.summary-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 12px; margin-bottom: 2rem;
+}
+.sum-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.sum-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+.sum-val { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.sum-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+/* dept tabs */
+.dept-tabs {
+  display: flex; gap: 6px; margin-bottom: 1.5rem;
+}
+.dept-tab {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 8px;
+}
+.dept-tab:hover { color: var(--text); border-color: var(--border2); }
+.dept-tab.active-cnc { background: rgba(79,156,249,0.1); border-color: rgba(79,156,249,0.4); color: var(--accent-cnc); }
+.dept-tab.active-flex { background: rgba(62,207,142,0.1); border-color: rgba(62,207,142,0.4); color: var(--accent-flex); }
+.dept-tab.active-qual { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.4); color: var(--accent-qual); }
+.dept-dot { width: 7px; height: 7px; border-radius: 50%; }
+/* podium */
+.podium-wrap {
+  display: flex; justify-content: center; align-items: flex-end;
+  gap: 16px; margin-bottom: 2rem; padding: 1.5rem;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+}
+.pod { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pod-av {
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; border: 2px solid transparent;
+  font-family: 'DM Mono', monospace;
+}
+.pod-p1 .pod-av { width: 56px; height: 56px; font-size: 14px; border-color: var(--gold); background: rgba(245,200,66,0.15); color: var(--gold); }
+.pod-p2 .pod-av { width: 46px; height: 46px; font-size: 12px; border-color: var(--silver); background: rgba(168,179,196,0.12); color: var(--silver); }
+.pod-p3 .pod-av { width: 46px; height: 46px; font-size: 12px; border-color: var(--bronze); background: rgba(200,121,65,0.12); color: var(--bronze); }
+.pod-name { font-size: 11px; font-weight: 600; text-align: center; max-width: 80px; color: var(--text); }
+.pod-score { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+.pod-plat {
+  border-radius: 6px 6px 0 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 6px; font-size: 20px; width: 72px;
+}
+.pod-p1 .pod-plat { height: 72px; background: rgba(245,200,66,0.08); }
+.pod-p2 .pod-plat { height: 50px; background: rgba(168,179,196,0.06); }
+.pod-p3 .pod-plat { height: 36px; background: rgba(200,121,65,0.06); }
+/* table */
+.table-wrap {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.table-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 160px 140px 80px;
+  padding: 10px 16px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface2);
+}
+.th {
+  font-size: 10px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.emp-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 160px 140px 80px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--border);
+  align-items: center;
+  transition: background 0.1s;
+}
+.emp-row:last-child { border-bottom: none; }
+.emp-row:hover { background: var(--surface2); }
+.rank-badge {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+}
+.rb-1 { background: rgba(245,200,66,0.15); color: var(--gold); }
+.rb-2 { background: rgba(168,179,196,0.12); color: var(--silver); }
+.rb-3 { background: rgba(200,121,65,0.12); color: var(--bronze); }
+.rb-n { background: var(--surface2); color: var(--muted); }
+.emp-info { display: flex; align-items: center; gap: 10px; }
+.emp-av {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
+}
+.emp-name { font-size: 13px; font-weight: 500; }
+.emp-flag {
+  font-size: 10px; padding: 1px 7px; border-radius: 5px;
+  background: rgba(249,115,22,0.15); color: #fb923c;
+  margin-top: 2px; display: inline-block;
+}
+.dual-bar { display: flex; flex-direction: column; gap: 4px; }
+.bar-line { display: flex; align-items: center; gap: 6px; }
+.bar-lbl { font-size: 9px; font-weight: 500; width: 10px; font-family: 'DM Mono', monospace; }
+.bar-bg { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 4px; border-radius: 2px; }
+.bar-num { font-size: 11px; color: var(--muted); min-width: 44px; font-family: 'DM Mono', monospace; }
+.score-cell { display: flex; flex-direction: column; gap: 3px; }
+.score-main {
+  font-family: 'DM Mono', monospace;
+  font-size: 16px; font-weight: 500;
+}
+.score-breakdown { display: flex; gap: 4px; }
+.score-pill {
+  font-size: 9px; padding: 1px 6px; border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+}
+.sp-h { background: rgba(79,156,249,0.15); color: #7bb8fb; }
+.sp-e { background: rgba(62,207,142,0.15); color: #5ee0a0; }
+/* dept view */
+.dept-view { display: none; }
+.dept-view.active { display: block; }
+/* dept stats row */
+.dept-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 10px; margin-bottom: 1.5rem;
+}
+.ds-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.ds-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.ds-val { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; font-family: 'DM Mono', monospace; }
+.ds-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+/* loading */
+#loading {
+  display: none; position: fixed; inset: 0;
+  background: rgba(15,15,17,0.85);
+  backdrop-filter: blur(6px);
+  align-items: center; justify-content: center;
+  z-index: 999;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent-cnc);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.anim-in { animation: fadeUp 0.3s ease forwards; opacity: 0; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+@media (max-width: 700px) {
+  .summary-strip { grid-template-columns: repeat(2,1fr); }
+  .table-header, .emp-row { grid-template-columns: 36px 1fr 100px 60px; }
+  .col-eff { display: none; }
+  .dept-stats { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Upload Screen -->
+<div id="upload-screen">
+  <div class="logo-mark">
+    <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
+      <path d="M3 3h18v4H3zM3 10h11v4H3zM3 17h7v4H3z" fill="none" stroke="#4f9cf9" stroke-width="1.5" stroke-linejoin="round"/>
+      <circle cx="18" cy="18" r="3" stroke="#3ecf8e" stroke-width="1.5"/>
+      <path d="M18 16.5v1.5l1 1" stroke="#3ecf8e" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="upload-title">Labour Leaderboard</div>
+  <div class="upload-sub">Drop in today's report to generate the leaderboard instantly</div>
+
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-icon">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#4f9cf9" stroke-width="1.5">
+        <path d="M12 16V8m0 0l-3 3m3-3l3 3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20 16.5A3.5 3.5 0 0016.5 20h-9A3.5 3.5 0 004 16.5V7a4 4 0 014-4h4l5 5v8.5z" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="drop-title">Drag & drop your Excel file here</div>
+    <div class="drop-sub">Supports Labor_Transaction_Report_*.xlsx</div>
+    <button class="drop-btn" onclick="document.getElementById('file-input').click()">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path d="M15 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8l-5-5z" stroke-linejoin="round"/>
+      </svg>
+      Choose File
+    </button>
+    <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(event)">
+    <div class="drop-note">xlsx files only · data stays in your browser, nothing is uploaded</div>
+  </div>
+
+  <div class="formula-note">
+    <strong>Scoring formula:</strong> Hours Worked (60%) + Efficiency — Qty ÷ Hrs (40%) · Ranked per department · 
+    Employees with &lt;0.5h logged are flagged as possible clock-in errors and efficiency is excluded from their score.
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading" style="display:flex">
+  <div class="spinner"></div>
+</div>
+
+<!-- Main App -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">Labour Leaderboard</div>
+      <div class="topbar-date" id="report-date">—</div>
+    </div>
+    <button class="reload-btn" onclick="resetToUpload()">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path d="M4 4v6h6M20 20v-6h-6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20 10A8 8 0 006.93 6.93M4 14a8 8 0 0013.07 3.07" stroke-linecap="round"/>
+      </svg>
+      Load new report
+    </button>
+  </div>
+
+  <div class="main-content">
+    <!-- Summary strip -->
+    <div class="summary-strip anim-in" id="summary-strip"></div>
+
+    <!-- Dept tabs -->
+    <div class="dept-tabs" id="dept-tabs"></div>
+
+    <!-- Dept views -->
+    <div id="dept-views"></div>
+  </div>
+</div>
+
+<script>
+const AV_COLORS = [
+  {bg:'rgba(79,156,249,0.18)',color:'#7bb8fb'},
+  {bg:'rgba(62,207,142,0.18)',color:'#5ee0a0'},
+  {bg:'rgba(249,115,22,0.18)',color:'#fb923c'},
+  {bg:'rgba(245,200,66,0.18)',color:'#f5c842'},
+  {bg:'rgba(167,139,250,0.18)',color:'#c4b5fd'},
+  {bg:'rgba(251,113,133,0.18)',color:'#fda4af'},
+  {bg:'rgba(56,189,248,0.18)',color:'#7dd3fc'},
+  {bg:'rgba(52,211,153,0.18)',color:'#6ee7b7'},
+  {bg:'rgba(251,191,36,0.18)',color:'#fcd34d'},
+  {bg:'rgba(196,181,253,0.18)',color:'#ddd6fe'},
+  {bg:'rgba(253,186,116,0.18)',color:'#fed7aa'},
+  {bg:'rgba(134,239,172,0.18)',color:'#bbf7d0'},
+];
+const DEPT_ACCENT = { CNC:'var(--accent-cnc)', FLEX:'var(--accent-flex)', Quality:'var(--accent-qual)' };
+const DEPT_CLASS  = { CNC:'active-cnc', FLEX:'active-flex', Quality:'active-qual' };
+const DEPT_DOT    = { CNC:'#4f9cf9', FLEX:'#3ecf8e', Quality:'#f97316' };
+const TARGET = 8;
+
+let globalEmpIndex = {};
+let currentDept = null;
+
+function ini(n){ return n.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2); }
+
+function avStyle(name){
+  let h=0; for(let c of name) h=(h*31+c.charCodeAt(0))&0xffff;
+  const c = AV_COLORS[h % AV_COLORS.length];
+  return `background:${c.bg};color:${c.color}`;
+}
+
+function effReliable(h){ return h >= 0.5; }
+
+function calcScores(emp){
+  const scored = emp.map(e=>({
+    ...e,
+    eff: effReliable(e.hours) ? e.qty/e.hours : 0,
+    reliable: effReliable(e.hours)
+  }));
+  const maxH = Math.max(...scored.map(e=>e.hours), 0.01);
+  const maxE = Math.max(...scored.filter(e=>e.reliable).map(e=>e.eff), 0.01);
+  return scored.map(e=>{
+    const hS = (e.hours/maxH)*100;
+    const eS = e.reliable ? (e.eff/maxE)*100 : 0;
+    return { ...e, hScore:Math.round(hS), eScore:Math.round(eS),
+             score:Math.round(hS*0.60+eS*0.40), maxH, maxE };
+  });
+}
+
+function rbClass(r){ return r===1?'rb-1':r===2?'rb-2':r===3?'rb-3':'rb-n'; }
+
+function renderPodium(sorted, deptColor){
+  if(!sorted.length) return '';
+  const order=[1,0,2], medals=['🥇','🥈','🥉'];
+  const top3=sorted.slice(0,3);
+  let html='<div class="podium-wrap">';
+  for(const i of order){
+    if(!top3[i]){html+='<div style="width:72px"></div>';continue;}
+    const e=top3[i],rank=i+1;
+    html+=`<div class="pod pod-p${rank}">
+      <div class="pod-av" style="${avStyle(e.name)}">${ini(e.name)}</div>
+      <div class="pod-name">${e.name.split(' ')[0]}</div>
+      <div class="pod-score">${e.score} pts</div>
+      <div class="pod-plat">${medals[i]}</div>
+    </div>`;
+  }
+  return html+'</div>';
+}
+
+function renderTable(sorted, deptColor, maxH, maxE){
+  let html=`<div class="table-wrap">
+    <div class="table-header">
+      <div class="th">#</div>
+      <div class="th">Employee</div>
+      <div class="th col-eff">Hours · Efficiency</div>
+      <div class="th">Hrs / Eff</div>
+      <div class="th">Score</div>
+    </div>`;
+  sorted.forEach((e,i)=>{
+    const hPct=(Math.min(e.hours/(maxH||1),1)*100).toFixed(1);
+    const ePct=e.reliable?(Math.min(e.eff/(maxE||1),1)*100).toFixed(1):0;
+    html+=`<div class="emp-row">
+      <div><span class="rank-badge ${rbClass(i+1)}">${i+1}</span></div>
+      <div class="emp-info">
+        <div class="emp-av" style="${avStyle(e.name)}">${ini(e.name)}</div>
+        <div>
+          <div class="emp-name">${e.name}</div>
+          ${!e.reliable?'<span class="emp-flag">clock-in?</span>':''}
+        </div>
+      </div>
+      <div class="dual-bar col-eff">
+        <div class="bar-line">
+          <span class="bar-lbl" style="color:#7bb8fb">H</span>
+          <div class="bar-bg"><div class="bar-fill" style="width:${hPct}%;background:#4f9cf9"></div></div>
+          <span class="bar-num">${e.hours.toFixed(2)}h</span>
+        </div>
+        <div class="bar-line">
+          <span class="bar-lbl" style="color:#5ee0a0">E</span>
+          <div class="bar-bg"><div class="bar-fill" style="width:${ePct}%;background:#3ecf8e"></div></div>
+          <span class="bar-num">${e.reliable?e.eff.toFixed(1)+'u/h':'—'}</span>
+        </div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);line-height:1.8">
+        <div>${e.hours.toFixed(2)}h</div>
+        <div>${e.reliable?e.eff.toFixed(1)+' u/h':'—'}</div>
+      </div>
+      <div class="score-cell">
+        <div class="score-main" style="color:${e.score>=70?'#5ee0a0':e.score>=50?'#7bb8fb':e.score>=35?'#fcd34d':'#fda4af'}">${e.score}</div>
+        <div class="score-breakdown">
+          <span class="score-pill sp-h">H:${e.hScore}</span>
+          <span class="score-pill sp-e">E:${e.reliable?e.eScore:0}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  return html+'</div>';
+}
+
+function renderDeptView(dname, emp){
+  const scored = calcScores(emp);
+  const sorted = [...scored].sort((a,b)=>b.score-a.score);
+  const maxH = scored[0]?.maxH||1, maxE = scored[0]?.maxE||1;
+  const totalHrs = emp.reduce((a,e)=>a+e.hours,0);
+  const avgScore = Math.round(scored.reduce((a,e)=>a+e.score,0)/scored.length);
+  const reliableEmps = scored.filter(e=>e.reliable);
+  const avgEff = reliableEmps.length ? (reliableEmps.reduce((a,e)=>a+e.eff,0)/reliableEmps.length).toFixed(1) : '—';
+  const shortfall = emp.filter(e=>e.hours<TARGET).reduce((a,e)=>a+(TARGET-e.hours),0).toFixed(1);
+
+  const stats = `<div class="dept-stats">
+    <div class="ds-card"><div class="ds-lbl">Employees</div><div class="ds-val">${emp.length}</div></div>
+    <div class="ds-card"><div class="ds-lbl">Total Hours</div><div class="ds-val">${totalHrs.toFixed(1)}<span style="font-size:13px;font-weight:400">h</span></div><div class="ds-sub">target ${emp.length*TARGET}h</div></div>
+    <div class="ds-card"><div class="ds-lbl">Avg Efficiency</div><div class="ds-val">${avgEff}<span style="font-size:13px;font-weight:400"> u/h</span></div></div>
+    <div class="ds-card"><div class="ds-lbl">Hours Shortfall</div><div class="ds-val" style="color:${parseFloat(shortfall)>4?'#fda4af':parseFloat(shortfall)>0?'#fcd34d':'#5ee0a0'}">${shortfall}<span style="font-size:13px;font-weight:400">h</span></div><div class="ds-sub">${emp.filter(e=>e.hours>=TARGET).length} on full shift</div></div>
+  </div>`;
+
+  return stats + renderPodium(sorted, DEPT_ACCENT[dname]) + renderTable(sorted, DEPT_ACCENT[dname], maxH, maxE);
+}
+
+function buildApp(deptData, dateStr){
+  document.getElementById('report-date').textContent = dateStr;
+  const allEmp = Object.values(deptData).flat();
+  const totalEmp = allEmp.length;
+  const totalHrs = allEmp.reduce((a,e)=>a+e.hours,0).toFixed(1);
+  const depts = Object.keys(deptData);
+
+  // Build global emp index for colors
+  allEmp.forEach((e,i)=>{ globalEmpIndex[e.name]=i; });
+
+  // Summary strip
+  const allScored = depts.flatMap(d=>calcScores(deptData[d]));
+  const topEmp = allScored.reduce((a,b)=>b.score>a.score?b:a);
+  const totalShortfall = allEmp.filter(e=>e.hours<TARGET).reduce((a,e)=>a+(TARGET-e.hours),0).toFixed(1);
+
+  document.getElementById('summary-strip').innerHTML=`
+    <div class="sum-card"><div class="sum-lbl">Total Employees</div><div class="sum-val">${totalEmp}</div><div class="sum-sub">${depts.length} departments</div></div>
+    <div class="sum-card"><div class="sum-lbl">Total Hours</div><div class="sum-val">${totalHrs}h</div><div class="sum-sub">target ${totalEmp*TARGET}h</div></div>
+    <div class="sum-card"><div class="sum-lbl">Top Performer</div><div class="sum-val" style="font-size:16px;margin-top:2px">${topEmp.name}</div><div class="sum-sub">${topEmp.dept} · score ${topEmp.score}</div></div>
+    <div class="sum-card"><div class="sum-lbl">Hours Shortfall</div><div class="sum-val" style="color:${parseFloat(totalShortfall)>10?'#fda4af':'#fcd34d'}">${totalShortfall}h</div><div class="sum-sub">across all departments</div></div>
+  `;
+
+  // Tabs
+  const tabsEl = document.getElementById('dept-tabs');
+  tabsEl.innerHTML = depts.map(d=>`
+    <button class="dept-tab" id="tab-${d}" onclick="switchDept('${d}')">
+      <span class="dept-dot" style="background:${DEPT_DOT[d]||'#888'}"></span>${d}
+      <span style="font-size:11px;opacity:0.6">${deptData[d].length}</span>
+    </button>`).join('');
+
+  // Views
+  const viewsEl = document.getElementById('dept-views');
+  viewsEl.innerHTML = depts.map(d=>`<div class="dept-view" id="view-${d}">${renderDeptView(d,deptData[d])}</div>`).join('');
+
+  switchDept(depts[0]);
+
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('loading').style.display='none';
+}
+
+function switchDept(d){
+  document.querySelectorAll('.dept-view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.dept-tab').forEach(t=>{ t.className='dept-tab'; });
+  document.getElementById(`view-${d}`).classList.add('active');
+  const tab = document.getElementById(`tab-${d}`);
+  if(tab) tab.classList.add(DEPT_CLASS[d]||'active-cnc');
+  currentDept = d;
+}
+
+function processWorkbook(wb, filename){
+  const deptData = {};
+  for(const sheetName of wb.SheetNames){
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws);
+    if(!rows.length) continue;
+    const empMap = {};
+    for(const r of rows){
+      const name = r['Name']?.trim();
+      const dept = r['Department']?.trim() || sheetName.trim();
+      const hrs  = parseFloat(r['Labor Hrs']) || 0;
+      const qty  = parseInt(r['Labor Quantity']) || 0;
+      const job  = r['Job'];
+      if(!name) continue;
+      if(!empMap[name]) empMap[name]={ name, dept, hours:0, qty:0, tasks:new Set() };
+      empMap[name].hours += hrs;
+      empMap[name].qty   += qty;
+      if(job) empMap[name].tasks.add(String(job));
+    }
+    const empArr = Object.values(empMap).map(e=>({
+      ...e, hours:Math.round(e.hours*100)/100, tasks:e.tasks.size
+    }));
+    if(empArr.length) deptData[sheetName.trim()] = empArr;
+  }
+
+  // Extract date from filename or data
+  let dateStr = 'Unknown date';
+  const dm = filename.match(/(\d{1,2}[-_]\w+[-_]\d{4}|\d{4}[-_]\d{2}[-_]\d{2})/);
+  if(dm) dateStr = dm[0].replace(/_/g,'-');
+
+  buildApp(deptData, dateStr);
+}
+
+function handleFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  readFile(file);
+}
+
+function readFile(file){
+  document.getElementById('loading').style.display='flex';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = new Uint8Array(ev.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      processWorkbook(wb, file.name);
+    } catch(err){
+      document.getElementById('loading').style.display='none';
+      alert('Could not read file. Please make sure it is a valid Labour Transaction Report xlsx.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function resetToUpload(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+  document.getElementById('file-input').value='';
+}
+
+// Drag and drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e=>{
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) readFile(file);
+});
+
+// Hide loading on start
+document.getElementById('loading').style.display='none';
+</script>
+</body>
+</html>
